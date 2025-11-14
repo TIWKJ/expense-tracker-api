@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ผู้ใช้
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts     Account[]
+  transactions Transaction[]
+}
+
+// บัญชี (กระเป๋า/ธนาคาร/บัตร)
+model Account {
+  id        String      @id @default(cuid())
+  name      String
+  type      AccountType
+  balance   Decimal     @default(0.0)
+  ownerId   String
+  owner     User        @relation(fields: [ownerId], references: [id])
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  transactions Transaction[]
+}
+
+enum AccountType {
+  CASH
+  BANK
+  CARD
+  E_WALLET
+}
+
+// รายการรายรับ–รายจ่าย
+model Transaction {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id])
+  type       TxType
+  amount     Decimal
+  currency   String   @default("THB")
+  category   String
+  note       String?
+  occurredAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId, occurredAt])
+  @@index([accountId, occurredAt])
+}
+
+enum TxType {
+  INCOME
+  EXPENSE
+  TRANSFER // ภายหลังเราจะ enforce rule ว่าต้องมี source/destination accounts
+}
